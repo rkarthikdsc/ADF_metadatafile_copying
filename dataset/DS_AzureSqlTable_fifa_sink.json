@@ -1,0 +1,70 @@
+{
+	"name": "DS_AzureSqlTable_fifa_sink",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_AzureSqlDatabase_fifa_sink",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "SKey",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "ID",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Name",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Age",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Nationality",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Club",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Wage",
+				"type": "nvarchar"
+			},
+			{
+				"name": "PreferredFoot",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Position",
+				"type": "nvarchar"
+			},
+			{
+				"name": "Active",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "ActiveStartTime",
+				"type": "datetime2",
+				"scale": 7
+			},
+			{
+				"name": "ActiveEndTime",
+				"type": "datetime2",
+				"scale": 7
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "tbl_FIFAData"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

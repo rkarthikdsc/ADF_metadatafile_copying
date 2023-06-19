@@ -1,0 +1,9 @@
+{
+	"name": "gp-module-adf",
+	"location": "uksouth",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "ded75328-c5c9-4eae-b7a0-dd48c08e07be",
+		"tenantId": "0387b42e-1eef-4873-adf1-67c2e4b7857f"
+	}
+}

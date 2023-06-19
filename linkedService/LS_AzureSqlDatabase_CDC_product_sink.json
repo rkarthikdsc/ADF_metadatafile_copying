@@ -1,0 +1,12 @@
+{
+	"name": "LS_AzureSqlDatabase_CDC_product_sink",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "AzureSqlDatabase",
+		"typeProperties": {
+			"connectionString": "integrated security=False;encrypt=True;connection timeout=30;data source=gpwell.database.windows.net;initial catalog=Products;user id=sysadmin",
+			"encryptedCredential": "ew0KICAiVmVyc2lvbiI6ICIyMDE3LTExLTMwIiwNCiAgIlByb3RlY3Rpb25Nb2RlIjogIktleSIsDQogICJTZWNyZXRDb250ZW50VHlwZSI6ICJQbGFpbnRleHQiLA0KICAiQ3JlZGVudGlhbElkIjogIkRBVEFGQUNUT1JZQEI2MkQ4QkJFLTExM0QtNDMwMC1CNjk1LTgyM0E3NjE3NkFFRl83ZTZmZTM5ZC1lMmJkLTRiMDgtOWM1OS02NDQ0MDA2NzFiNTAiDQp9"
+		}
+	}
+}

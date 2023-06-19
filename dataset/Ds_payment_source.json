@@ -1,0 +1,61 @@
+{
+	"name": "Ds_payment_source",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_fifa_adls_source",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "Payments (1).csv",
+				"fileSystem": "dataflowinputs"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "order_id",
+				"type": "String"
+			},
+			{
+				"name": "payment_id",
+				"type": "String"
+			},
+			{
+				"name": "type",
+				"type": "String"
+			},
+			{
+				"name": "descriptions",
+				"type": "String"
+			},
+			{
+				"name": "pDate",
+				"type": "String"
+			},
+			{
+				"name": "Status",
+				"type": "String"
+			},
+			{
+				"name": "Details",
+				"type": "String"
+			},
+			{
+				"name": "Total_Invoice",
+				"type": "String"
+			},
+			{
+				"name": "Due_Amount",
+				"type": "String"
+			}
+		]
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}
