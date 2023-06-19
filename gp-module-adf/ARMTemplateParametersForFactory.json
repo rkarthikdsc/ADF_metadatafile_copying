@@ -1,0 +1,39 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "gp-module-adf"
+		},
+		"AzureDataLakeStorage_sink_raw_accountKey": {
+			"value": ""
+		},
+		"LS_AzureDataLakeStorage_raw_sink_accountKey": {
+			"value": ""
+		},
+		"LS_AzureSqlDatabase_CDC_product_sink_connectionString": {
+			"value": ""
+		},
+		"LS_AzureSqlDatabase_fifa_sink_connectionString": {
+			"value": ""
+		},
+		"LS_AzureSqlDatabase_source_connectionString": {
+			"value": ""
+		},
+		"LS_AzureSqlDatabase_source_config_connectionString": {
+			"value": ""
+		},
+		"LS_fifa_adls_source_accountKey": {
+			"value": ""
+		},
+		"AzureDataLakeStorage_sink_raw_properties_typeProperties_url": {
+			"value": "https://adls4gp.dfs.core.windows.net/"
+		},
+		"LS_AzureDataLakeStorage_raw_sink_properties_typeProperties_url": {
+			"value": "https://adls4gp.dfs.core.windows.net/"
+		},
+		"LS_fifa_adls_source_properties_typeProperties_url": {
+			"value": "https://adls4gp.dfs.core.windows.net/"
+		}
+	}
+}
