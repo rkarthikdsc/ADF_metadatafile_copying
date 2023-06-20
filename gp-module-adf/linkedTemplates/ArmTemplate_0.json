@@ -156,6 +156,24 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/DSAzureSql_inc_source')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_AzureSqlDatabase_source_config",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_AzureSqlDatabase_source_config')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/DS_AzureSqlTable_fifa_sink')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -556,13 +574,13 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/pipeline2')]",
+			"name": "[concat(parameters('factoryName'), '/PL_final-incrementalLoad')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"activities": [
 					{
-						"name": "Exisisting_Lookup_sourcetbl",
+						"name": "Lookup Existing watermark",
 						"type": "Lookup",
 						"dependsOn": [],
 						"policy": {
@@ -577,17 +595,170 @@
 							"source": {
 								"type": "AzureSqlSource",
 								"sqlReaderQuery": {
-									"value": "Select * from config.tbl_watermark \nWhere sourceTable = '@{pipeline().parameters.PTableName}'",
+									"value": "select* from config.tbl_watermark where SourceTable = '@{pipeline().parameters.P_TableName}'",
 									"type": "Expression"
 								},
 								"queryTimeout": "02:00:00",
 								"partitionOption": "None"
 							},
 							"dataset": {
-								"referenceName": "DS_AzureSqlTable_meta_source",
+								"referenceName": "DSAzureSql_inc_source",
 								"type": "DatasetReference",
 								"parameters": {}
 							}
+						}
+					},
+					{
+						"name": "Lookup New watermark",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "select\nmax(@{pipeline().parameters.P_ColumnName}) as NewWaterMark\nfrom\n@{pipeline().parameters.P_TableName}",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "DSAzureSql_inc_source",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "Copy data_incrementalLoad",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Lookup Existing watermark",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Lookup New watermark",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "select * from @{pipeline().parameters.P_TableName}\nwhere \n@{activity('Lookup Existing watermark').output.firstRow.WatermarkColumn} > '@{activity('Lookup Existing watermark').output.firstRow.LastUpdated}' \nand \n@{activity('Lookup Existing watermark').output.firstRow.WatermarkColumn} <= '@{activity('Lookup New watermark').output.firstRow.NewWaterMark}'",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DSAzureSql_inc_source",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_metadata_sink_raw",
+								"type": "DatasetReference",
+								"parameters": {
+									"PContainerName": "raw",
+									"PFolderName": {
+										"value": "@concat(\npipeline().parameters.P_TableName,\n'/',\nutcnow('yyyy'),\n'/',\nutcnow('MM'),\n'/',\nutcnow('dd')\n)\n",
+										"type": "Expression"
+									},
+									"PFileName": {
+										"value": "@concat(\nactivity('Lookup Existing watermark').output.firstRow.SourceTable,'_',utcNow(),'.csv')",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					},
+					{
+						"name": "Stored_procedure_update_waterMark",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Copy data_incrementalLoad",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[usp_update_watermarks]",
+							"storedProcedureParameters": {
+								"TableName": {
+									"value": {
+										"value": "@pipeline().parameters.P_TableName",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"Updated": {
+									"value": {
+										"value": "@activity('Lookup New watermark').output.firstRow.NewWaterMark",
+										"type": "Expression"
+									},
+									"type": "DateTime"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_AzureSqlDatabase_source_config",
+							"type": "LinkedServiceReference"
 						}
 					}
 				],
@@ -596,7 +767,10 @@
 					"cancelAfter": {}
 				},
 				"parameters": {
-					"PTableName": {
+					"P_TableName": {
+						"type": "string"
+					},
+					"P_ColumnName": {
 						"type": "string"
 					}
 				},
@@ -606,7 +780,9 @@
 				"annotations": []
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/DS_AzureSqlTable_meta_source')]"
+				"[concat(variables('factoryId'), '/datasets/DSAzureSql_inc_source')]",
+				"[concat(variables('factoryId'), '/datasets/DS_metadata_sink_raw')]",
+				"[concat(variables('factoryId'), '/linkedServices/LS_AzureSqlDatabase_source_config')]"
 			]
 		},
 		{
@@ -1014,311 +1190,6 @@
 											"type": "AzureSqlSource",
 											"sqlReaderQuery": {
 												"value": "select @{item().sourceColumns} from @{item().SourceSchema}.@{item().sourceTable}",
-												"type": "Expression"
-											},
-											"queryTimeout": "02:00:00",
-											"partitionOption": "None"
-										},
-										"sink": {
-											"type": "DelimitedTextSink",
-											"storeSettings": {
-												"type": "AzureBlobFSWriteSettings"
-											},
-											"formatSettings": {
-												"type": "DelimitedTextWriteSettings",
-												"quoteAllText": true,
-												"fileExtension": ".txt"
-											}
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "DS_AzureSqlTable_meta_source",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "DS_metadata_sink_raw",
-											"type": "DatasetReference",
-											"parameters": {
-												"PContainerName": {
-													"value": "@item().destinationContainer",
-													"type": "Expression"
-												},
-												"PFolderName": {
-													"value": "@concat(item().destinationFolder,'/',utcnow('yyyy'),'/',utcnow('MM'),'/',utcnow('dd'))",
-													"type": "Expression"
-												},
-												"PFileName": {
-													"value": "@item().destinationFile",
-													"type": "Expression"
-												}
-											}
-										}
-									]
-								},
-								{
-									"name": "Stored procedure insert log details",
-									"type": "SqlServerStoredProcedure",
-									"dependsOn": [
-										{
-											"activity": "Copy data1",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "0.12:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"storedProcedureName": "[[dbo].[usp_insertlogdetails]",
-										"storedProcedureParameters": {
-											"billing_Reference_activity_Type": {
-												"value": {
-													"value": "@activity('Copy data1').output.billingReference.activityType",
-													"type": "Expression"
-												},
-												"type": "String"
-											},
-											"dataFactory": {
-												"value": {
-													"value": "@pipeline().DataFactory",
-													"type": "Expression"
-												},
-												"type": "String"
-											},
-											"destinationFile": {
-												"value": {
-													"value": "@item().destinationFile",
-													"type": "Expression"
-												},
-												"type": "String"
-											},
-											"destinationFolder": {
-												"value": {
-													"value": "@concat(item().destinationFolder,'/',utcnow('yyyy'),'/',utcnow('MM'),'/',utcnow('dd'))",
-													"type": "Expression"
-												},
-												"type": "String"
-											},
-											"effective_Integration_Runtime": {
-												"value": {
-													"value": "@activity('Copy data1').output.effectiveIntegrationRuntime",
-													"type": "Expression"
-												},
-												"type": "String"
-											},
-											"errors": {
-												"value": {
-													"value": "@activity('Copy data1').output.errors",
-													"type": "Expression"
-												},
-												"type": "String"
-											},
-											"execution_Details_sink_type": {
-												"value": {
-													"value": "@activity('Copy data1').output.executionDetails[0].sink.type",
-													"type": "Expression"
-												},
-												"type": "String"
-											},
-											"execution_Details_source_type": {
-												"value": {
-													"value": "@activity('Copy data1').output.executionDetails[0].source.type",
-													"type": "Expression"
-												},
-												"type": "String"
-											},
-											"execution_Details_status": {
-												"value": {
-													"value": "@activity('Copy data1').output.executionDetails[0].status",
-													"type": "Expression"
-												},
-												"type": "String"
-											},
-											"pipelineName": {
-												"value": {
-													"value": "@pipeline().Pipeline",
-													"type": "Expression"
-												},
-												"type": "String"
-											},
-											"pipelineRunId": {
-												"value": {
-													"value": "@pipeline().RunId",
-													"type": "Expression"
-												},
-												"type": "String"
-											},
-											"rowsCopied": {
-												"value": {
-													"value": "@activity('Copy data1').output.rowsCopied",
-													"type": "Expression"
-												},
-												"type": "Int32"
-											},
-											"rowsRead": {
-												"value": {
-													"value": "@activity('Copy data1').output.rowsRead",
-													"type": "Expression"
-												},
-												"type": "Int32"
-											},
-											"sourceTable": {
-												"value": {
-													"value": "@concat(item().SourceSchema,'.',item().sourceTable)",
-													"type": "Expression"
-												},
-												"type": "String"
-											},
-											"throughPut": {
-												"value": {
-													"value": "@activity('Copy data1').output.throughput",
-													"type": "Expression"
-												},
-												"type": "Decimal"
-											},
-											"triggerName": {
-												"value": {
-													"value": "@pipeline().TriggerName",
-													"type": "Expression"
-												},
-												"type": "String"
-											},
-											"triggerTime": {
-												"value": {
-													"value": "@pipeline().TriggerTime",
-													"type": "Expression"
-												},
-												"type": "DateTime"
-											},
-											"triggerType": {
-												"value": {
-													"value": "@pipeline().TriggerType",
-													"type": "Expression"
-												},
-												"type": "String"
-											},
-											"used_Data_Integration_Units": {
-												"value": {
-													"value": "@activity('Copy data1').output.executionDetails[0].usedDataIntegrationUnits",
-													"type": "Expression"
-												},
-												"type": "Int32"
-											}
-										}
-									},
-									"linkedServiceName": {
-										"referenceName": "LS_AzureSqlDatabase_source_config",
-										"type": "LinkedServiceReference"
-									}
-								}
-							]
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "metadata_driven_table"
-				},
-				"annotations": [],
-				"lastPublishTime": "2023-06-19T14:35:14Z"
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/DS_AzureSqlTable_meta_source')]",
-				"[concat(variables('factoryId'), '/datasets/DS_metadata_sink_raw')]",
-				"[concat(variables('factoryId'), '/linkedServices/LS_AzureSqlDatabase_source_config')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/pl_metadata_copy_updated')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Lookup_metadata",
-						"type": "Lookup",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": "SELECT  [sourceId]\n      ,[sourceSchema]\n      ,[sourceTable]\n      ,[sourceColumns]\n      ,[destinationContainer]\n      ,[destinationFolder]\n      ,[destinationFile]\n  FROM [config].[tbl_data_source]",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"dataset": {
-								"referenceName": "DS_AzureSqlTable_meta_source",
-								"type": "DatasetReference",
-								"parameters": {}
-							},
-							"firstRowOnly": false
-						}
-					},
-					{
-						"name": "ForEach_metadata_tables",
-						"type": "ForEach",
-						"dependsOn": [
-							{
-								"activity": "Lookup_metadata",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('Lookup_metadata').output.value",
-								"type": "Expression"
-							},
-							"isSequential": true,
-							"activities": [
-								{
-									"name": "Copy data1",
-									"type": "Copy",
-									"dependsOn": [],
-									"policy": {
-										"timeout": "0.12:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "AzureSqlSource",
-											"sqlReaderQuery": {
-												"value": "@select @{item().sourceColumns} from @{item().SourceSchema}.@{item().sourceTable}",
 												"type": "Expression"
 											},
 											"queryTimeout": "02:00:00",
