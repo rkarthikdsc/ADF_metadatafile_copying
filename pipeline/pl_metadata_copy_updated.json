@@ -63,7 +63,7 @@
 								"source": {
 									"type": "AzureSqlSource",
 									"sqlReaderQuery": {
-										"value": "select @{item().sourceColumns} from @{item().SourceSchema}.@{item().sourceTable}",
+										"value": "@select @{item().sourceColumns} from @{item().SourceSchema}.@{item().sourceTable}",
 										"type": "Expression"
 									},
 									"queryTimeout": "02:00:00",
@@ -154,11 +154,17 @@
 										"type": "String"
 									},
 									"destinationFile": {
-										"value": "@item().destinationFile",
+										"value": {
+											"value": "@item().destinationFile",
+											"type": "Expression"
+										},
 										"type": "String"
 									},
 									"destinationFolder": {
-										"value": "@concat(item().destinationFolder,'/',utcnow('yyyy'),'/',utcnow('MM'),'/',utcnow('dd'))",
+										"value": {
+											"value": "@concat(item().destinationFolder,'/',utcnow('yyyy'),'/',utcnow('MM'),'/',utcnow('dd'))",
+											"type": "Expression"
+										},
 										"type": "String"
 									},
 									"effective_Integration_Runtime": {
