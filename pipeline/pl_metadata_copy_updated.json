@@ -63,7 +63,7 @@
 								"source": {
 									"type": "AzureSqlSource",
 									"sqlReaderQuery": {
-										"value": "@select @{item().sourceColumns} from @{item().SourceSchema}.@{item().sourceTable}",
+										"value": "select @{item().sourceColumns} from @{item().SourceSchema}.@{item().sourceTable}",
 										"type": "Expression"
 									},
 									"queryTimeout": "02:00:00",

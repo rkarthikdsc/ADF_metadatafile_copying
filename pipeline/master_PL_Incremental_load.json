@@ -1,9 +1,9 @@
 {
-	"name": "pipeline2",
+	"name": "master_PL_Incremental_load",
 	"properties": {
 		"activities": [
 			{
-				"name": "Exisisting_Lookup_sourcetbl",
+				"name": "Lookup_Exisiting_WaterMark",
 				"type": "Lookup",
 				"dependsOn": [],
 				"policy": {
@@ -18,24 +18,65 @@
 					"source": {
 						"type": "AzureSqlSource",
 						"sqlReaderQuery": {
-							"value": "Select * from config.tbl_watermark \nWhere sourceTable = '@{pipeline().parameters.PTableName}'",
+							"value": "Select * from config.tbl_watermark",
 							"type": "Expression"
 						},
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
 					"dataset": {
-						"referenceName": "DS_AzureSqlTable_meta_source",
+						"referenceName": "DSAzureSql_inc_source",
 						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach_IncrementalLoad_watermark",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Lookup_Exisiting_WaterMark",
+						"dependencyConditions": [
+							"Succeeded"
+						]
 					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lookup_Exisiting_WaterMark').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "Execute_child_incrementalLoad_watermarkPL",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "PL_final-incrementalLoad",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"P_TableName": {
+										"value": "@item().SourceTable",
+										"type": "Expression"
+									},
+									"P_ColumnName": {
+										"value": "@item().WaterMarkColumn",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
 				}
 			}
 		],
-		"parameters": {
-			"PTableName": {
-				"type": "string"
-			}
-		},
 		"folder": {
 			"name": "Incremental_load_pipeline"
 		},
