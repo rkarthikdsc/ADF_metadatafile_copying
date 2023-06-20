@@ -1,0 +1,414 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "gp-module-adf"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/dataflow1')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "DS_fifa_source",
+								"type": "DatasetReference"
+							},
+							"name": "newFIFAdata"
+						},
+						{
+							"dataset": {
+								"referenceName": "DS_AzureSqlTable_fifa_sink",
+								"type": "DatasetReference"
+							},
+							"name": "ExsistingData"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "DS_dataflow_sink",
+								"type": "DatasetReference"
+							},
+							"name": "sink1"
+						}
+					],
+					"transformations": [
+						{
+							"name": "CalNewHashValues"
+						},
+						{
+							"name": "CalExistingHashValues"
+						},
+						{
+							"name": "Checkfornewdata"
+						},
+						{
+							"name": "AddsurrogateKey"
+						},
+						{
+							"name": "maxSKey"
+						},
+						{
+							"name": "joinmaxsurrogatekey"
+						},
+						{
+							"name": "CalculateExtracolumns"
+						},
+						{
+							"name": "SelectRelevantColumns"
+						}
+					],
+					"scriptLines": [
+						"parameters{",
+						"     parameter_ID as string ('ID'),",
+						"     parameter_SCD as string ('Club,Wage,Position')",
+						"}",
+						"source(output(",
+						"          ID as string,",
+						"          Name as string,",
+						"          Age as string,",
+						"          Nationality as string,",
+						"          Club as string,",
+						"          Wage as string,",
+						"          PreferredFoot as string,",
+						"          Position as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: false) ~> newFIFAdata",
+						"source(output(",
+						"          SKey as integer,",
+						"          ID as string,",
+						"          Name as string,",
+						"          Age as string,",
+						"          Nationality as string,",
+						"          Club as string,",
+						"          Wage as string,",
+						"          PreferredFoot as string,",
+						"          Position as string,",
+						"          Active as integer,",
+						"          ActiveStartTime as timestamp,",
+						"          ActiveEndTime as timestamp",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     isolationLevel: 'READ_UNCOMMITTED',",
+						"     format: 'table') ~> ExsistingData",
+						"newFIFAdata derive(ID_Hash = md5(byName($parameter_ID)),",
+						"          SCD_Hash = md5(byNames(split($parameter_SCD,',')))) ~> CalNewHashValues",
+						"ExsistingData derive(ID_Hash = md5(byName($parameter_ID)),",
+						"          SCD_Hash = md5(byNames(split($parameter_SCD,',')))) ~> CalExistingHashValues",
+						"CalNewHashValues, CalExistingHashValues exists(CalNewHashValues@ID_Hash == CalExistingHashValues@ID_Hash",
+						"     && CalNewHashValues@SCD_Hash == CalExistingHashValues@SCD_Hash,",
+						"     negate:true,",
+						"     broadcast: 'auto')~> Checkfornewdata",
+						"Checkfornewdata keyGenerate(output(SKey as long),",
+						"     startAt: 1L,",
+						"     stepValue: 1L) ~> AddsurrogateKey",
+						"CalExistingHashValues aggregate(MaxSkey = max(toInteger(byName('SKey')))) ~> maxSKey",
+						"AddsurrogateKey, maxSKey join(MaxSkey==SKey||true(),",
+						"     joinType:'cross',",
+						"     matchType:'exact',",
+						"     ignoreSpaces: false,",
+						"     broadcast: 'auto')~> joinmaxsurrogatekey",
+						"joinmaxsurrogatekey derive(SKey = SKey+ iifNull(MaxSkey,0),",
+						"          Active = 1,",
+						"          ActiveStartTime = currentUTC(),",
+						"          ActiveEndTime = toTimestamp(toString(null()))) ~> CalculateExtracolumns",
+						"CalculateExtracolumns select(mapColumn(",
+						"          each(match(name!='ID_Hash'&&name!='SCD_Hash'&&name!='MaxSkey'))",
+						"     ),",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true) ~> SelectRelevantColumns",
+						"SelectRelevantColumns sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     umask: 0022,",
+						"     preCommands: [],",
+						"     postCommands: [],",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true) ~> sink1"
+					]
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/step2c_df_practise')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "DS_customer_source",
+								"type": "DatasetReference"
+							},
+							"name": "CustomerDataSource"
+						},
+						{
+							"dataset": {
+								"referenceName": "Ds_payment_source",
+								"type": "DatasetReference"
+							},
+							"name": "PaymentSource"
+						},
+						{
+							"dataset": {
+								"referenceName": "Ds_order_source",
+								"type": "DatasetReference"
+							},
+							"name": "OrderSource"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "DS_dataflow_sink",
+								"type": "DatasetReference"
+							},
+							"name": "sink1"
+						}
+					],
+					"transformations": [
+						{
+							"name": "Filteronlynonerrordata"
+						},
+						{
+							"name": "filterCustomerAge"
+						},
+						{
+							"name": "SelectRelevantCustomercolumns"
+						},
+						{
+							"name": "SelectRelevantPaymentColumns"
+						},
+						{
+							"name": "selectRelevantordercolumns"
+						},
+						{
+							"name": "JoinCustomerOrdersources"
+						},
+						{
+							"name": "JoinCustomerOrderandPayment"
+						},
+						{
+							"name": "SelectPaymentDetailsRequiredFields"
+						},
+						{
+							"name": "pivot1"
+						}
+					],
+					"scriptLines": [
+						"source(output(",
+						"          customer_id as string,",
+						"          Customerslastname as string,",
+						"          Customersfirstname as string,",
+						"          CustomersCountry as string,",
+						"          Customersage as string,",
+						"          Customersgender as string,",
+						"          Customersemail as string,",
+						"          Customersprofession as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: false) ~> CustomerDataSource",
+						"source(output(",
+						"          order_id as string,",
+						"          payment_id as string,",
+						"          type as string,",
+						"          descriptions as string,",
+						"          pDate as date 'DD/mm/yyyy',",
+						"          Status as string,",
+						"          Details as string,",
+						"          Total_Invoice as short,",
+						"          Due_Amount as double",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: false) ~> PaymentSource",
+						"source(output(",
+						"          order_id as string,",
+						"          customer_id as string,",
+						"          Store_id as string,",
+						"          Date as date 'DD/mm/yyyy'",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: false) ~> OrderSource",
+						"PaymentSource filter(Status !='error' && (not(equals(Status,'refunded')))) ~> Filteronlynonerrordata",
+						"CustomerDataSource filter(toInteger(Customersage) >=20 && toInteger(Customersage)<71) ~> filterCustomerAge",
+						"filterCustomerAge select(mapColumn(",
+						"          Customer_id = customer_id,",
+						"          Customers_First_Name = Customersfirstname,",
+						"          Customers_Last_Name = Customerslastname,",
+						"          Customers_Country = CustomersCountry,",
+						"          Customers_Age = Customersage",
+						"     ),",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true) ~> SelectRelevantCustomercolumns",
+						"Filteronlynonerrordata select(mapColumn(",
+						"          payment_id,",
+						"          order_id,",
+						"          Status,",
+						"          Due_Amount,",
+						"          Total_Invoice",
+						"     ),",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true) ~> SelectRelevantPaymentColumns",
+						"OrderSource select(mapColumn(",
+						"          order_id,",
+						"          customer_id,",
+						"          Date",
+						"     ),",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true) ~> selectRelevantordercolumns",
+						"SelectRelevantCustomercolumns, selectRelevantordercolumns join(SelectRelevantCustomercolumns@Customer_id == selectRelevantordercolumns@customer_id,",
+						"     joinType:'inner',",
+						"     matchType:'exact',",
+						"     ignoreSpaces: false,",
+						"     broadcast: 'auto')~> JoinCustomerOrdersources",
+						"JoinCustomerOrdersources, SelectRelevantPaymentColumns join(selectRelevantordercolumns@order_id == SelectRelevantPaymentColumns@order_id,",
+						"     joinType:'inner',",
+						"     matchType:'exact',",
+						"     ignoreSpaces: false,",
+						"     broadcast: 'auto')~> JoinCustomerOrderandPayment",
+						"JoinCustomerOrderandPayment select(mapColumn(",
+						"          customer_id = selectRelevantordercolumns@customer_id,",
+						"          Date,",
+						"          Customers_First_Name,",
+						"          Customers_Last_Name,",
+						"          Customers_Country,",
+						"          Customers_Age,",
+						"          Status,",
+						"          Total_Invoice,",
+						"          Due_Amount",
+						"     ),",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true) ~> SelectPaymentDetailsRequiredFields",
+						"SelectPaymentDetailsRequiredFields pivot(groupBy(customer_id,",
+						"          Date,",
+						"          Customers_First_Name,",
+						"          Customers_Last_Name,",
+						"          Customers_Country,",
+						"          Customers_Age,",
+						"          Total_Invoice),",
+						"     pivotBy(Status, ['received', 'not received']),",
+						"     Due_Amount_ = sum(Due_Amount),",
+						"     columnNaming: '$N$V',",
+						"     lateral: true) ~> pivot1",
+						"pivot1 sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     partitionFileNames:['Paymentdetails.csv'],",
+						"     umask: 0022,",
+						"     preCommands: [],",
+						"     postCommands: [],",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true,",
+						"     partitionBy('hash', 1)) ~> sink1"
+					]
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pipeline1')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Data flow1",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "step2c_df_practise",
+								"type": "DataFlowReference",
+								"parameters": {},
+								"datasetParameters": {
+									"CustomerDataSource": {},
+									"PaymentSource": {},
+									"OrderSource": {},
+									"sink1": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"PMaxage": {
+						"type": "string"
+					},
+					"PMinage": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2023-06-15T09:37:32Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/step2c_df_practise')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/trigger1')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "pl_metadata_copy_updated",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 1,
+						"startTime": "2023-06-20T16:36:00Z",
+						"timeZone": "UTC"
+					}
+				}
+			},
+			"dependsOn": []
+		}
+	]
+}
