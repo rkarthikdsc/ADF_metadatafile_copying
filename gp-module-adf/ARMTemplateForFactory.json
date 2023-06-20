@@ -222,7 +222,7 @@
 													"type": "Expression"
 												},
 												"PFolderName": {
-													"value": "@item().destinationFolder",
+													"value": "@concat(item().destinationFolder,'/',utcnow('yyyy'),'/',utcnow('MM'),'/',addDays(utcnow(),1,'dd'))",
 													"type": "Expression"
 												},
 												"PFileName": {
