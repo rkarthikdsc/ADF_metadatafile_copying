@@ -1,0 +1,149 @@
+{
+	"name": "pl_emp_watermark_incrementalload",
+	"properties": {
+		"activities": [
+			{
+				"name": "Exisisting_Lookup_sourcetbl",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "Select * from config.tbl_watermark \nWhere sourceTable = '@{pipeline().parameters.PTableName}'",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_AzureSqlTable_meta_source",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "New_watermark_Lookup",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "select \nmax(@{pipeline().parameters.PColumnName}) as NewWaterMark \nfrom \n@{pipeline().parameters.PTableName}",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_AzureSqlTable_meta_source",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "Copy data1",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "New_watermark_Lookup",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "select * from @{pipeline().parameters.PTableName}\nWhere\n@{activity('Exisisting_Lookup_sourcetbl').output.firstRow.WaterMarkColumn} >'@{activity('Exisisting_Lookup_sourcetbl').output.firstRow.LastUpdated}'\nand\n@{activity('Exisisting_Lookup_sourcetbl').output.firstRow.WaterMarkColumn} <= '@{activity('New_watermark_Lookup').output.firstRow.NewWaterMark}'",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DS_AzureSqlTable_meta_source",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DS_metadata_sink_raw",
+						"type": "DatasetReference",
+						"parameters": {
+							"PContainerName": "raw",
+							"PFolderName": {
+								"value": "@concat(pipeline().parameters.PTableName,'/',utcnow('yyyy'),'/',utcnow('MM'),'/',utcnow('dd'))",
+								"type": "Expression"
+							},
+							"PFileName": {
+								"value": "@concat(activity('Exisisting_Lookup_sourcetbl').output.firstRow.SourceTable,'_',utcNow(),'.csv')",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			}
+		],
+		"parameters": {
+			"PTableName": {
+				"type": "string"
+			},
+			"PColumnName": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Incremental_load_pipeline"
+		},
+		"annotations": []
+	}
+}

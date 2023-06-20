@@ -1,0 +1,44 @@
+{
+	"name": "pipeline2",
+	"properties": {
+		"activities": [
+			{
+				"name": "Exisisting_Lookup_sourcetbl",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "Select * from config.tbl_watermark \nWhere sourceTable = '@{pipeline().parameters.PTableName}'",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_AzureSqlTable_meta_source",
+						"type": "DatasetReference"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"PTableName": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Incremental_load_pipeline"
+		},
+		"annotations": []
+	}
+}
