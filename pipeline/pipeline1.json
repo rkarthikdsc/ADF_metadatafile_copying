@@ -16,7 +16,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"dataflow": {
-						"referenceName": "step2c_df_practise",
+						"referenceName": "step_df_practise",
 						"type": "DataFlowReference"
 					},
 					"compute": {
