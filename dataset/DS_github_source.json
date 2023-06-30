@@ -1,0 +1,25 @@
+{
+	"name": "DS_github_source",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_HttpServer_Gitsource",
+			"type": "LinkedServiceReference"
+		},
+		"folder": {
+			"name": "DS_Github"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "HttpServerLocation",
+				"relativeUrl": "/rkarthikdsc/Github_to_Adf/raw/main/Customers.csv"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": []
+	}
+}
