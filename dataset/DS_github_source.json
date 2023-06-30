@@ -5,6 +5,11 @@
 			"referenceName": "LS_HttpServer_Gitsource",
 			"type": "LinkedServiceReference"
 		},
+		"parameters": {
+			"P_relative_url": {
+				"type": "string"
+			}
+		},
 		"folder": {
 			"name": "DS_Github"
 		},
@@ -13,7 +18,10 @@
 		"typeProperties": {
 			"location": {
 				"type": "HttpServerLocation",
-				"relativeUrl": "/rkarthikdsc/Github_to_Adf/raw/main/Customers.csv"
+				"relativeUrl": {
+					"value": "@dataset().P_relative_url",
+					"type": "Expression"
+				}
 			},
 			"columnDelimiter": ",",
 			"escapeChar": "\\",

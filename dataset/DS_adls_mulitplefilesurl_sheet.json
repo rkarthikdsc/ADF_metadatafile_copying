@@ -1,14 +1,9 @@
 {
-	"name": "DS_adls_rawsink",
+	"name": "DS_adls_mulitplefilesurl_sheet",
 	"properties": {
 		"linkedServiceName": {
 			"referenceName": "LS_AzureDataLakeStorage_rawsink",
 			"type": "LinkedServiceReference"
-		},
-		"parameters": {
-			"P_FileName": {
-				"type": "string"
-			}
 		},
 		"folder": {
 			"name": "DS_Github"
@@ -18,17 +13,35 @@
 		"typeProperties": {
 			"location": {
 				"type": "AzureBlobFSLocation",
-				"fileName": {
-					"value": "@dataset().P_FileName",
-					"type": "Expression"
-				},
-				"fileSystem": "raw"
+				"fileName": "ListOfFiles.csv",
+				"fileSystem": "demofillist"
 			},
 			"columnDelimiter": ",",
 			"escapeChar": "\\",
 			"firstRowAsHeader": true,
 			"quoteChar": "\""
 		},
-		"schema": []
+		"schema": [
+			{
+				"name": "No",
+				"type": "String"
+			},
+			{
+				"name": "FullURL",
+				"type": "String"
+			},
+			{
+				"name": "BaseURL",
+				"type": "String"
+			},
+			{
+				"name": "SourceRelativeURL",
+				"type": "String"
+			},
+			{
+				"name": "FileName",
+				"type": "String"
+			}
+		]
 	}
 }

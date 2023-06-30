@@ -1,0 +1,63 @@
+{
+	"name": "PL_copy_Multiplefiles_urlList_from_sheets",
+	"properties": {
+		"activities": [
+			{
+				"name": "Lkp_listoffiles",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"wildcardFileName": "*",
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "DS_adls_mulitplefilesurl_sheet",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach1",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Lkp_listoffiles",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lkp_listoffiles').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true
+				}
+			}
+		],
+		"folder": {
+			"name": "GitHub"
+		},
+		"annotations": []
+	}
+}
