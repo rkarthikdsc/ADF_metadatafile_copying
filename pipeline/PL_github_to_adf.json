@@ -194,16 +194,6 @@
 				}
 			}
 		],
-		"variables": {
-			"v_url": {
-				"type": "String",
-				"defaultValue": "/rkarthikdsc/Github_to_Adf/raw/main/Payments.csv"
-			},
-			"v_filename": {
-				"type": "String",
-				"defaultValue": "Payments_details.csv"
-			}
-		},
 		"folder": {
 			"name": "GitHub"
 		},
