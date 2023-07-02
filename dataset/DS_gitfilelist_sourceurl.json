@@ -1,0 +1,26 @@
+{
+	"name": "DS_gitfilelist_sourceurl",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_HttpServer_Gitsource",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"GitRelativeUrl": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "HttpServerLocation"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": []
+	}
+}
